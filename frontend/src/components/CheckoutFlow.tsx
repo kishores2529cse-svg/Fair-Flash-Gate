@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
 import { ArrowLeft, QrCode, CreditCard, Wallet, Building2, CheckCircle2, XCircle, Timer, Search } from 'lucide-react';
 
 interface Seat {
@@ -39,6 +39,10 @@ export default function CheckoutFlow({
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(300); // 5-minute countdown (300 seconds)
   const [selectedMethod, setSelectedMethod] = useState<'upi' | 'card' | 'netbank' | 'wallet'>('upi');
+
+  // Scrollytelling progress for Grab a Bite!
+  const { scrollYProgress: foodScrollProgress } = useScroll();
+  const foodScrollScale = useSpring(foodScrollProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
 
   // Food filter state
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -493,11 +497,10 @@ export default function CheckoutFlow({
       id: 'f43',
       name: 'Cream Donut',
       desc: 'Cream Donut',
-      desc: 'Bhel Puri',
       price: 120,
       isVeg: true,
-      category: 'Snacks',
-      image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&q=80&w=300',
+      category: 'Desserts',
+      image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300',
       qty: 0,
     },
     {
@@ -822,10 +825,21 @@ export default function CheckoutFlow({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="w-full p-4 md:p-8 flex-1 max-w-6xl mx-auto"
+          className="w-full p-4 md:p-8 flex-1 max-w-6xl mx-auto relative"
         >
+          {/* Interactive Scrollytelling Dining Progress Bar */}
+          <motion.div
+            style={{ scaleX: foodScrollScale }}
+            className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#eb4d5e] via-amber-400 to-[#eb4d5e] z-50 origin-left shadow-[0_0_12px_rgba(235,77,94,0.6)] pointer-events-none"
+          />
+
           {/* Header Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 border-b border-zinc-200 pb-4">
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 border-b border-zinc-200 pb-4"
+          >
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-zinc-800">Grab a Bite!</h2>
               <p className="text-xs text-zinc-500 font-medium">
@@ -856,10 +870,10 @@ export default function CheckoutFlow({
                 Skip
               </motion.button>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Framer Motion Category Navigation Bar */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none border-b border-zinc-200 relative">
+          {/* Sticky Interactive Category Navigation Bar */}
+          <div className="sticky top-[65px] z-30 bg-[#f5f6f8]/95 backdrop-blur-md py-2.5 flex items-center gap-2 overflow-x-auto mb-6 scrollbar-none border-b border-zinc-200 shadow-xs">
             {['All', 'Popcorn', 'Combos', 'Snacks', 'Beverages', 'Desserts'].map((cat) => {
               const isActive = selectedCategory === cat;
               const count = cat === 'All'
@@ -930,9 +944,22 @@ export default function CheckoutFlow({
                       if (categoryItems.length === 0) return null;
 
                       return (
-                        <div key={catName} className="space-y-3">
+                        <motion.div
+                          key={catName}
+                          initial={{ opacity: 0, y: 26 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, amount: 0.08 }}
+                          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                          className="space-y-3"
+                        >
                           {/* Category Header */}
-                          <div className="flex items-center gap-2 border-b border-zinc-100 pb-2">
+                          <motion.div
+                            initial={{ opacity: 0, x: -16 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true, amount: 0.3 }}
+                            transition={{ duration: 0.35 }}
+                            className="flex items-center gap-2 border-b border-zinc-200/80 pb-2 pt-2"
+                          >
                             <h3 className="font-bold text-zinc-800 text-sm flex items-center gap-2">
                               {catName === 'Popcorn' && '🍿'}
                               {catName === 'Combos' && '✨'}
@@ -942,16 +969,29 @@ export default function CheckoutFlow({
                               {catName}
                             </h3>
                             <span className="text-xs text-zinc-400 font-medium">({categoryItems.length})</span>
-                          </div>
+                          </motion.div>
 
                           {/* Category Items Grid */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {categoryItems.map((item) => (
-                              <div
+                            {categoryItems.map((item, itemIdx) => (
+                              <motion.div
                                 key={item.id}
-                                className="bg-white border border-zinc-200 rounded-2xl p-4 flex gap-4 items-start shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+                                initial={{ opacity: 0, y: 22, scale: 0.97 }}
+                                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                                viewport={{ once: true, amount: 0.1 }}
+                                transition={{ 
+                                  duration: 0.4, 
+                                  delay: (itemIdx % 2) * 0.06,
+                                  ease: [0.25, 0.1, 0.25, 1]
+                                }}
+                                whileHover={{ 
+                                  y: -4, 
+                                  boxShadow: '0 12px 25px -4px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
+                                  transition: { duration: 0.2 } 
+                                }}
+                                className="bg-white border border-zinc-200 rounded-2xl p-4 flex gap-4 items-start shadow-sm transition-all relative overflow-hidden group cursor-pointer"
                               >
-                                <div className="relative shrink-0">
+                                <div className="relative shrink-0 overflow-hidden rounded-xl">
                                   {/* Veg / Non-Veg Tag */}
                                   <div className="absolute top-1 left-1 z-10 bg-white/90 p-0.5 rounded shadow-sm">
                                     {item.isVeg !== false ? (
@@ -967,7 +1007,7 @@ export default function CheckoutFlow({
                                   <img
                                     src={item.image}
                                     alt={item.name}
-                                    className="w-20 h-20 rounded-xl object-cover"
+                                    className="w-20 h-20 rounded-xl object-cover transition-transform duration-500 group-hover:scale-105"
                                   />
                                 </div>
 
@@ -1016,10 +1056,10 @@ export default function CheckoutFlow({
                                     )}
                                   </div>
                                 </div>
-                              </div>
+                              </motion.div>
                             ))}
                           </div>
-                        </div>
+                        </motion.div>
                       );
                     })}
                 </motion.div>
@@ -1027,7 +1067,12 @@ export default function CheckoutFlow({
             </div>
 
             {/* Cart Summary Side Column */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm h-fit sticky top-20">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm h-fit sticky top-24"
+            >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3 mb-4">
                 <span className="text-xs text-zinc-500 font-semibold uppercase">Ticket(s) price</span>
                 <span className="text-lg font-bold text-zinc-900">₹{ticketsTotal.toFixed(2)}</span>
@@ -1075,7 +1120,7 @@ export default function CheckoutFlow({
               >
                 Proceed to Payment (₹{orderTotal.toFixed(2)})
               </button>
-            </div>
+            </motion.div>
           </div>
         </motion.div>
       )}
