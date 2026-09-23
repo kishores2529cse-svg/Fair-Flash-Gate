@@ -163,7 +163,8 @@ export default function TheatreSeatSelection({ movieTitle, onBack, onMovieSwitch
   useEffect(() => {
     let ws: WebSocket | null = null;
     try {
-      ws = new WebSocket('ws://localhost:8080/ws');
+      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
+      ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {

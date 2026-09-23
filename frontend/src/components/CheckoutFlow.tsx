@@ -752,7 +752,8 @@ export default function CheckoutFlow({
     const checkoutId = `chk_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
     try {
-      const res = await fetch(`http://localhost:8080/checkout?checkout_id=${checkoutId}`);
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const res = await fetch(`${apiBase}/checkout?checkout_id=${checkoutId}`);
       if (!res.ok) {
         console.error('Checkout failed');
       }
