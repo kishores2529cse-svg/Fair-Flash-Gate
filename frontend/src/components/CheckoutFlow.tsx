@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, QrCode, CreditCard, Wallet, Building2, CheckCircle2, XCircle, Timer } from 'lucide-react';
+import { ArrowLeft, QrCode, CreditCard, Wallet, Building2, CheckCircle2, XCircle, Timer, Search } from 'lucide-react';
 
 interface Seat {
   id: string;
@@ -13,6 +13,10 @@ interface FoodItem {
   name: string;
   desc: string;
   price: number;
+  originalPrice?: number;
+  discount?: string;
+  isVeg?: boolean;
+  category: 'Popcorn' | 'Combos' | 'Snacks' | 'Beverages' | 'Desserts';
   image: string;
   qty: number;
 }
@@ -36,38 +40,668 @@ export default function CheckoutFlow({
   const [timeLeft, setTimeLeft] = useState<number>(300); // 5-minute countdown (300 seconds)
   const [selectedMethod, setSelectedMethod] = useState<'upi' | 'card' | 'netbank' | 'wallet'>('upi');
 
+  // Food filter state
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
   // Food items state
   const [foodItems, setFoodItems] = useState<FoodItem[]>([
+    // Popcorn
     {
       id: 'f1',
       name: 'Medium Popcorn',
       desc: 'Salted / Buttered Medium Popcorn',
       price: 250,
+      isVeg: true,
+      category: 'Popcorn',
       image: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?auto=format&fit=crop&q=80&w=300',
       qty: 0,
     },
     {
       id: 'f2',
-      name: 'Caramel Popcorn',
-      desc: 'Sweet & Crunchy Caramel Popcorn',
+      name: 'Caramel Pop Corn',
+      desc: 'Sweet Caramel Popcorn',
       price: 160,
+      isVeg: true,
+      category: 'Popcorn',
       image: 'https://images.unsplash.com/photo-1585647347384-2593bc35786b?auto=format&fit=crop&q=80&w=300',
       qty: 0,
     },
     {
       id: 'f3',
-      name: 'Gold Combo',
-      desc: 'Medium Popcorn + 2 Regular Cokes',
-      price: 390,
-      image: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281313?auto=format&fit=crop&q=80&w=300',
+      name: 'Half & Half Medium Popcorn',
+      desc: 'Half & Half Medium Popcorn',
+      price: 300,
+      isVeg: true,
+      category: 'Popcorn',
+      image: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?auto=format&fit=crop&q=80&w=300',
       qty: 0,
     },
     {
       id: 'f4',
-      name: 'Chicken Feast Combo',
-      desc: 'Chicken Burger + French Fries + Coke',
+      name: 'Butter Toffee Popcorn',
+      desc: 'Butter Toffee Popcorn',
+      price: 180,
+      isVeg: true,
+      category: 'Popcorn',
+      image: 'https://images.unsplash.com/photo-1585647347384-2593bc35786b?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f5',
+      name: 'Lemon Pataka Popcorn',
+      desc: 'Lemon Pataka Popcorn',
+      price: 180,
+      isVeg: true,
+      category: 'Popcorn',
+      image: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+
+    // Combos
+    {
+      id: 'f6',
+      name: 'Gold Combo',
+      desc: 'Medium Popcorn + 2 Regular Cokes',
       price: 390,
+      originalPrice: 490,
+      discount: '20% OFF',
+      isVeg: true,
+      category: 'Combos',
+      image: '/gold_combo.jpg',
+      qty: 0,
+    },
+    {
+      id: 'f7',
+      name: 'Silver Combo',
+      desc: 'Regular Popcorn + Regular Coke',
+      price: 290,
+      originalPrice: 350,
+      discount: '17% OFF',
+      isVeg: true,
+      category: 'Combos',
+      image: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f8',
+      name: 'Chicken Feast Combo',
+      desc: 'Chicken Burger + French Fries + Regular Coke',
+      price: 390,
+      originalPrice: 580,
+      discount: '32% OFF',
+      isVeg: false,
+      category: 'Combos',
       image: 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f9',
+      name: 'Veg Feast Combo',
+      desc: 'Veg Burger + French Fries + Regular Coke',
+      price: 390,
+      originalPrice: 520,
+      discount: '25% OFF',
+      isVeg: true,
+      category: 'Combos',
+      image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f10',
+      name: 'Cream Donut Combo',
+      desc: 'Cream Donut + Cold Coffee',
+      price: 250,
+      originalPrice: 370,
+      discount: '32% OFF',
+      isVeg: true,
+      category: 'Combos',
+      image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f11',
+      name: 'Cheese Donut Combo',
+      desc: 'Cheese Donut + Cold Coffee',
+      price: 250,
+      originalPrice: 370,
+      discount: '32% OFF',
+      isVeg: true,
+      category: 'Combos',
+      image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f12',
+      name: 'Nachos Combo',
+      desc: 'Nachos + Regular Coke',
+      price: 250,
+      originalPrice: 370,
+      discount: '32% OFF',
+      isVeg: true,
+      category: 'Combos',
+      image: 'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f13',
+      name: 'Combo 1',
+      desc: 'Small Popcorn + Small Coke',
+      price: 260,
+      isVeg: true,
+      category: 'Combos',
+      image: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+
+    // Snacks
+    {
+      id: 'f14',
+      name: 'French Fries',
+      desc: 'French Fries',
+      price: 160,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f15',
+      name: 'French Fries with Toppings',
+      desc: 'French Fries with Toppings',
+      price: 200,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f16',
+      name: 'Sweet Corn',
+      desc: 'Sweet Corn',
+      price: 120,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f17',
+      name: 'Pepper Corn',
+      desc: 'Pepper Corn',
+      price: 120,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f18',
+      name: 'Popcorn Chicken',
+      desc: 'Popcorn Chicken',
+      price: 230,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f19',
+      name: 'Veg Burger',
+      desc: 'Veg Burger',
+      price: 190,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f20',
+      name: 'Chicken Burger',
+      desc: 'Chicken Burger',
+      price: 230,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f21',
+      name: 'Chicken Momos',
+      desc: 'Chicken Momos',
+      price: 210,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1625220194771-7ebdea0b70b9?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f22',
+      name: 'Veg Momos',
+      desc: 'Veg Momos',
+      price: 170,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1625220194771-7ebdea0b70b9?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f23',
+      name: 'Crunchy Veg Momos',
+      desc: 'Crunchy Veg Momos',
+      price: 170,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1625220194771-7ebdea0b70b9?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f24',
+      name: 'Bhel Puri',
+      desc: 'Bhel Puri',
+      price: 120,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f25',
+      name: 'Peri Peri French Fries',
+      desc: 'Peri Peri French Fries',
+      price: 190,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f26',
+      name: 'Veg Sandwich',
+      desc: 'Veg Sandwich',
+      price: 150,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f27',
+      name: 'Mexican Veg Sandwich',
+      desc: 'Mexican Veg Sandwich',
+      price: 180,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f28',
+      name: 'Chicken Frankie',
+      desc: 'Chicken Frankie',
+      price: 200,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f29',
+      name: 'Paneer Frankies',
+      desc: 'Paneer Frankies',
+      price: 190,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f30',
+      name: 'Samosa Chaat',
+      desc: 'Samosa Chaat',
+      price: 120,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f31',
+      name: 'Chicken Tikka Sandwich',
+      desc: 'Chicken Tikka Sandwich',
+      price: 190,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f32',
+      name: 'Corn Cheese Nuggets',
+      desc: 'Corn Cheese Nuggets',
+      price: 220,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f33',
+      name: 'Egg Sandwich',
+      desc: 'Egg Sandwich',
+      price: 160,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f34',
+      name: 'Nachos Chips',
+      desc: 'Nachos Chips',
+      price: 170,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f35',
+      name: 'Alfredo Veg Pasta',
+      desc: 'Alfredo Veg Pasta',
+      price: 180,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f36',
+      name: 'Chicken Fries Loaded',
+      desc: 'Chicken Fries Loaded',
+      price: 260,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+
+    // Beverages
+    {
+      id: 'f37',
+      name: 'Regular Coke',
+      desc: 'Regular Coke',
+      price: 150,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f38',
+      name: 'Coke Large',
+      desc: 'Coke Large',
+      price: 180,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f39',
+      name: 'Cold Coffee',
+      desc: 'Cold Coffee',
+      price: 180,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f40',
+      name: 'Cappuccino',
+      desc: 'Cappuccino',
+      price: 120,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f41',
+      name: 'Cardamom Tea',
+      desc: 'Cardamom Tea',
+      price: 120,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f42',
+      name: 'Chef Special Hot Chocolate',
+      desc: 'Chef Special Hot Chocolate',
+      price: 150,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+
+    // Desserts
+    {
+      id: 'f43',
+      name: 'Cream Donut',
+      desc: 'Cream Donut',
+      desc: 'Bhel Puri',
+      price: 120,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f25',
+      name: 'Peri Peri French Fries',
+      desc: 'Peri Peri French Fries',
+      price: 190,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f26',
+      name: 'Veg Sandwich',
+      desc: 'Veg Sandwich',
+      price: 150,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f27',
+      name: 'Mexican Veg Sandwich',
+      desc: 'Mexican Veg Sandwich',
+      price: 180,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f28',
+      name: 'Chicken Frankie',
+      desc: 'Chicken Frankie',
+      price: 200,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f29',
+      name: 'Paneer Frankies',
+      desc: 'Paneer Frankies',
+      price: 190,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f30',
+      name: 'Samosa Chaat',
+      desc: 'Samosa Chaat',
+      price: 120,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f31',
+      name: 'Chicken Tikka Sandwich',
+      desc: 'Chicken Tikka Sandwich',
+      price: 190,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f32',
+      name: 'Corn Cheese Nuggets',
+      desc: 'Corn Cheese Nuggets',
+      price: 220,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f33',
+      name: 'Egg Sandwich',
+      desc: 'Egg Sandwich',
+      price: 160,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f34',
+      name: 'Nachos Chips',
+      desc: 'Nachos Chips',
+      price: 170,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f35',
+      name: 'Alfredo Veg Pasta',
+      desc: 'Alfredo Veg Pasta',
+      price: 180,
+      isVeg: true,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f36',
+      name: 'Chicken Fries Loaded',
+      desc: 'Chicken Fries Loaded',
+      price: 260,
+      isVeg: false,
+      category: 'Snacks',
+      image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+
+    // Beverages
+    {
+      id: 'f37',
+      name: 'Regular Coke',
+      desc: 'Regular Coke',
+      price: 150,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f38',
+      name: 'Coke Large',
+      desc: 'Coke Large',
+      price: 180,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f39',
+      name: 'Cold Coffee',
+      desc: 'Cold Coffee',
+      price: 180,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f40',
+      name: 'Cappuccino',
+      desc: 'Cappuccino',
+      price: 120,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f41',
+      name: 'Cardamom Tea',
+      desc: 'Cardamom Tea',
+      price: 120,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f42',
+      name: 'Chef Special Hot Chocolate',
+      desc: 'Chef Special Hot Chocolate',
+      price: 150,
+      isVeg: true,
+      category: 'Beverages',
+      image: 'https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+
+    // Desserts
+    {
+      id: 'f43',
+      name: 'Cream Donut',
+      desc: 'Cream Donut',
+      price: 140,
+      isVeg: true,
+      category: 'Desserts',
+      image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300',
+      qty: 0,
+    },
+    {
+      id: 'f44',
+      name: 'Chocolate Brownie Fudge Ice Cream',
+      desc: 'Chocolate Brownie Fudge Ice Cream',
+      price: 180,
+      isVeg: true,
+      category: 'Desserts',
+      image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&q=80&w=300',
       qty: 0,
     },
   ]);
@@ -133,16 +767,23 @@ export default function CheckoutFlow({
     <div className="min-h-screen w-full bg-[#f5f6f8] text-zinc-900 font-inter select-none flex flex-col">
       {/* GLOBAL TOP HEADER BAR WITH CANCEL BUTTON ACROSS ALL STEPS */}
       {step !== 'confirmed' && (
-        <div className="w-full bg-white border-b border-zinc-200 sticky top-0 z-40 shadow-sm">
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="w-full bg-white border-b border-zinc-200 sticky top-0 z-40 shadow-sm"
+        >
           <div className="max-w-6xl mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 onClick={() => setShowCancelModal(true)}
                 className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-600 transition-colors cursor-pointer"
                 title="Cancel Booking"
               >
                 <ArrowLeft className="w-5 h-5" />
-              </button>
+              </motion.button>
               <div>
                 <h1 className="text-base md:text-lg font-bold text-zinc-800 leading-none mb-1">
                   {movieTitle}
@@ -161,105 +802,270 @@ export default function CheckoutFlow({
               </div>
 
               {/* TOP CANCEL BUTTON (IMMEDIATELY UNLOCKS SEATS IF CLICKED!) */}
-              <button
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setShowCancelModal(true)}
                 className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 border border-red-300 text-red-600 px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
               >
                 <XCircle className="w-4 h-4 text-red-500" />
                 <span>CANCEL BOOKING</span>
-              </button>
+              </motion.button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* STEP 1: FOOD & BEVERAGES (Grab a Bite!) */}
       {step === 'food' && (
-        <div className="w-full p-4 md:p-8 flex-1">
-          <div className="flex items-center justify-between mb-6 border-b border-zinc-200 pb-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="w-full p-4 md:p-8 flex-1 max-w-6xl mx-auto"
+        >
+          {/* Header Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 border-b border-zinc-200 pb-4">
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-zinc-800">Grab a Bite!</h2>
               <p className="text-xs text-zinc-500 font-medium">
                 Add snacks & drinks to your movie experience
               </p>
             </div>
-            <button
-              onClick={() => setStep('summary')}
-              className="bg-[#eb4d5e] hover:bg-[#d93b4d] text-white px-7 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md cursor-pointer"
-            >
-              Skip
-            </button>
+
+            <div className="flex items-center gap-3">
+              {/* Search Bar */}
+              <div className="relative flex-1 sm:w-64">
+                <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search for F&B items"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white border border-zinc-300 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-[#eb4d5e] transition-colors"
+                />
+              </div>
+
+              {/* Skip Button */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setStep('summary')}
+                className="bg-[#eb4d5e] hover:bg-[#d93b4d] text-white px-7 py-2 rounded-xl font-semibold text-sm transition-all shadow-md cursor-pointer shrink-0"
+              >
+                Skip
+              </motion.button>
+            </div>
+          </div>
+
+          {/* Framer Motion Category Navigation Bar */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none border-b border-zinc-200 relative">
+            {['All', 'Popcorn', 'Combos', 'Snacks', 'Beverages', 'Desserts'].map((cat) => {
+              const isActive = selectedCategory === cat;
+              const count = cat === 'All'
+                ? foodItems.length
+                : foodItems.filter(f => f.category === cat).length;
+
+              return (
+                <motion.button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`relative px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer select-none flex items-center gap-1.5 ${
+                    isActive ? 'text-[#eb4d5e]' : 'text-zinc-600 hover:text-zinc-900 bg-white border border-zinc-200'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeCategoryTab"
+                      className="absolute inset-0 bg-rose-50 border border-[#eb4d5e] rounded-full shadow-xs"
+                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                  <span className="relative z-10">{cat}</span>
+                  <span className={`relative z-10 text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    isActive ? 'bg-[#eb4d5e] text-white' : 'bg-zinc-100 text-zinc-500'
+                  }`}>
+                    {count}
+                  </span>
+                </motion.button>
+              );
+            })}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {foodItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white border border-zinc-200 rounded-2xl p-5 flex gap-5 items-center shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-20 h-20 rounded-xl object-cover"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-bold text-zinc-800 text-sm">{item.name}</h3>
-                      <p className="text-xs text-zinc-500 mb-2">{item.desc}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-zinc-900 text-sm">₹{item.price}</span>
-                        {item.qty === 0 ? (
-                          <button
-                            onClick={() => handleFoodQty(item.id, 1)}
-                            className="border border-[#eb4d5e] text-[#eb4d5e] hover:bg-rose-50 px-4 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                          >
-                            Add
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-lg px-2 py-0.5">
-                            <button
-                              onClick={() => handleFoodQty(item.id, -1)}
-                              className="text-[#eb4d5e] font-bold text-sm px-1 cursor-pointer"
-                            >
-                              -
-                            </button>
-                            <span className="text-xs font-bold text-zinc-800">{item.qty}</span>
-                            <button
-                              onClick={() => handleFoodQty(item.id, 1)}
-                              className="text-[#eb4d5e] font-bold text-sm px-1 cursor-pointer"
-                            >
-                              +
-                            </button>
+              {foodItems.filter((item) => {
+                const matchesCat = selectedCategory === 'All' || item.category === selectedCategory;
+                const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.desc.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesCat && matchesSearch;
+              }).length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white border border-zinc-200 rounded-2xl p-12 text-center text-zinc-400"
+                >
+                  <p className="text-sm font-semibold">No food items found matching "{searchQuery}"</p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={selectedCategory + searchQuery}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-8"
+                >
+                  {['Popcorn', 'Combos', 'Snacks', 'Beverages', 'Desserts']
+                    .filter((cat) => selectedCategory === 'All' || selectedCategory === cat)
+                    .map((catName) => {
+                      const categoryItems = foodItems.filter((item) => {
+                        const matchesCat = item.category === catName;
+                        const matchesSearch =
+                          item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          item.desc.toLowerCase().includes(searchQuery.toLowerCase());
+                        return matchesCat && matchesSearch;
+                      });
+
+                      if (categoryItems.length === 0) return null;
+
+                      return (
+                        <div key={catName} className="space-y-3">
+                          {/* Category Header */}
+                          <div className="flex items-center gap-2 border-b border-zinc-100 pb-2">
+                            <h3 className="font-bold text-zinc-800 text-sm flex items-center gap-2">
+                              {catName === 'Popcorn' && '🍿'}
+                              {catName === 'Combos' && '✨'}
+                              {catName === 'Snacks' && '🍔'}
+                              {catName === 'Beverages' && '🥤'}
+                              {catName === 'Desserts' && '🍨'}
+                              {catName}
+                            </h3>
+                            <span className="text-xs text-zinc-400 font-medium">({categoryItems.length})</span>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+
+                          {/* Category Items Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {categoryItems.map((item) => (
+                              <div
+                                key={item.id}
+                                className="bg-white border border-zinc-200 rounded-2xl p-4 flex gap-4 items-start shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+                              >
+                                <div className="relative shrink-0">
+                                  {/* Veg / Non-Veg Tag */}
+                                  <div className="absolute top-1 left-1 z-10 bg-white/90 p-0.5 rounded shadow-sm">
+                                    {item.isVeg !== false ? (
+                                      <div className="w-3.5 h-3.5 border border-emerald-600 flex items-center justify-center p-0.5 rounded-xs">
+                                        <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-3.5 h-3.5 border border-red-600 flex items-center justify-center p-0.5 rounded-xs">
+                                        <div className="w-1.5 h-1.5 bg-red-600 rounded-full" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    className="w-20 h-20 rounded-xl object-cover"
+                                  />
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-bold text-zinc-800 text-sm leading-tight mb-1 truncate">{item.name}</h3>
+                                  <p className="text-[11px] text-zinc-500 mb-2 line-clamp-2 leading-relaxed">{item.desc}</p>
+                                  
+                                  <div className="flex items-center justify-between mt-auto">
+                                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                                      <span className="font-bold text-zinc-900 text-sm">₹{item.price}</span>
+                                      {item.originalPrice && (
+                                        <span className="text-[11px] text-zinc-400 line-through">₹{item.originalPrice}</span>
+                                      )}
+                                      {item.discount && (
+                                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded">
+                                          {item.discount}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {item.qty === 0 ? (
+                                      <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => handleFoodQty(item.id, 1)}
+                                        className="border border-[#eb4d5e] text-[#eb4d5e] hover:bg-rose-50 px-4 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                      >
+                                        Add
+                                      </motion.button>
+                                    ) : (
+                                      <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-lg px-2 py-0.5">
+                                        <button
+                                          onClick={() => handleFoodQty(item.id, -1)}
+                                          className="text-[#eb4d5e] font-bold text-sm px-1 cursor-pointer"
+                                        >
+                                          -
+                                        </button>
+                                        <span className="text-xs font-bold text-zinc-800">{item.qty}</span>
+                                        <button
+                                          onClick={() => handleFoodQty(item.id, 1)}
+                                          className="text-[#eb4d5e] font-bold text-sm px-1 cursor-pointer"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </motion.div>
+              )}
             </div>
 
             {/* Cart Summary Side Column */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm h-fit">
+            <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm h-fit sticky top-20">
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3 mb-4">
-                <span className="text-xs text-zinc-500 font-semibold uppercase">Ticket(s) Price</span>
+                <span className="text-xs text-zinc-500 font-semibold uppercase">Ticket(s) price</span>
                 <span className="text-lg font-bold text-zinc-900">₹{ticketsTotal.toFixed(2)}</span>
               </div>
 
               <div className="mb-6">
-                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Your Cart</h4>
+                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">Your Cart</h4>
                 {foodTotal > 0 ? (
-                  foodItems
-                    .filter((f) => f.qty > 0)
-                    .map((f) => (
-                      <div key={f.id} className="flex justify-between text-xs py-1 text-zinc-700">
-                        <span>{f.name} x {f.qty}</span>
-                        <span className="font-semibold">₹{f.price * f.qty}</span>
-                      </div>
-                    ))
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {foodItems
+                      .filter((f) => f.qty > 0)
+                      .map((f) => (
+                        <div key={f.id} className="flex items-center justify-between text-xs py-1 border-b border-zinc-50 text-zinc-700">
+                          <div className="flex items-center gap-2">
+                            {f.isVeg !== false ? (
+                              <div className="w-2.5 h-2.5 border border-emerald-600 flex items-center justify-center p-0.5 rounded-xs shrink-0">
+                                <div className="w-1 h-1 bg-emerald-600 rounded-full" />
+                              </div>
+                            ) : (
+                              <div className="w-2.5 h-2.5 border border-red-600 flex items-center justify-center p-0.5 rounded-xs shrink-0">
+                                <div className="w-1 h-1 bg-red-600 rounded-full" />
+                              </div>
+                            )}
+                            <span>{f.name} x {f.qty}</span>
+                          </div>
+                          <span className="font-semibold text-zinc-900">₹{f.price * f.qty}</span>
+                        </div>
+                      ))}
+                  </div>
                 ) : (
-                  <p className="text-xs text-zinc-400 italic">No food items added yet</p>
+                  <div className="text-center py-6 px-4 bg-zinc-50 rounded-xl border border-dashed border-zinc-200">
+                    <div className="w-12 h-12 bg-rose-50 text-[#eb4d5e] rounded-full flex items-center justify-center mx-auto mb-2 text-xl font-bold">
+                      🍿
+                    </div>
+                    <p className="text-xs text-zinc-500 font-medium">
+                      Fill this cart with your favorite food combos!
+                    </p>
+                  </div>
                 )}
               </div>
 
@@ -271,12 +1077,12 @@ export default function CheckoutFlow({
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* STEP 2: PAYMENT OPTIONS & ORDER SUMMARY */}
       {step === 'summary' && (
-        <div className="w-full p-4 md:p-8 flex-1">
+        <div className="w-full p-4 md:p-8 flex-1 max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Payment Methods */}
             <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row h-fit">
@@ -429,7 +1235,7 @@ export default function CheckoutFlow({
         </div>
       )}
 
-      {/* CANCEL PAYMENT MODAL (Matching Screenshot 5) */}
+      {/* CANCEL PAYMENT MODAL */}
       <AnimatePresence>
         {showCancelModal && (
           <motion.div
@@ -494,6 +1300,4 @@ export default function CheckoutFlow({
     </div>
   );
 }
-
-
 
