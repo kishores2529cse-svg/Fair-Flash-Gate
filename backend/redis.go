@@ -19,6 +19,7 @@ type InMemLock struct {
 }
 
 var inMemLocks = make(map[string]InMemLock)
+var soldSeats = make(map[string]bool)
 var inMemTicketPool int64 = 10000
 var lockMu sync.Mutex
 
@@ -40,10 +41,10 @@ func InitRedis() {
 
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
-		fmt.Printf("⚠️ Redis server not found (%v). Running thread-safe in-memory fallback engine.\n", err)
+		fmt.Printf("Redis server not found (%v). Running thread-safe in-memory fallback engine.\n", err)
 		isRedisAvailable = false
 	} else {
-		fmt.Println("⚡ Connected to Redis Server on localhost:6379")
+		fmt.Println("Connected to Redis Server on localhost:6379")
 		isRedisAvailable = true
 		rdb.Set(ctx, "tickets_remaining", 10000, 0)
 	}
@@ -56,6 +57,14 @@ func LockSeat(seatID string, userID string) (bool, error) {
 		// SETNX (Set if Not Exists) with 2-minute TTL (120s)
 		success, err := rdb.SetNX(ctx, lockKey, userID, 2*time.Minute).Result()
 		if err == nil {
+			if success {
+				lockMu.Lock()
+				inMemLocks[seatID] = InMemLock{
+					UserID:    userID,
+					ExpiresAt: time.Now().Add(2 * time.Minute),
+				}
+				lockMu.Unlock()
+			}
 			return success, nil
 		}
 	}
@@ -94,6 +103,25 @@ func UnlockSeat(seatID string) error {
 	defer lockMu.Unlock()
 	delete(inMemLocks, seatID)
 	return nil
+}
+
+// UnlockSeatsByUser releases all locks held by a specific user (e.g. on disconnect)
+func UnlockSeatsByUser(userID string) []string {
+	lockMu.Lock()
+	defer lockMu.Unlock()
+	
+	var releasedSeats []string
+	for seatID, lockInfo := range inMemLocks {
+		if lockInfo.UserID == userID {
+			releasedSeats = append(releasedSeats, seatID)
+			delete(inMemLocks, seatID)
+			if isRedisAvailable && rdb != nil {
+				lockKey := fmt.Sprintf("lock:seat:%s", seatID)
+				rdb.Del(ctx, lockKey)
+			}
+		}
+	}
+	return releasedSeats
 }
 
 // DecrementTicketPool executes atomic ticket decrement
@@ -142,4 +170,57 @@ func SweepExpiredLocks() []string {
 		}
 	}
 	return expiredSeats
+}
+
+// PurchaseSeat upgrades a lock to a permanent sold state
+func PurchaseSeat(seatID string, userID string) error {
+	if isRedisAvailable && rdb != nil {
+		lockKey := fmt.Sprintf("lock:seat:%s", seatID)
+		rdb.Set(ctx, lockKey, "sold:"+userID, 0) // 0 means no expiration
+	}
+
+	lockMu.Lock()
+	defer lockMu.Unlock()
+	
+	// Remove from inMemLocks so sweeper ignores it
+	delete(inMemLocks, seatID)
+	soldSeats[seatID] = true
+	return nil
+}
+
+// GetSyncState returns all currently locked and sold seats
+func GetSyncState() ([]string, []string) {
+	var locked []string
+	var sold []string
+
+	if isRedisAvailable && rdb != nil {
+		keys, err := rdb.Keys(ctx, "lock:seat:*").Result()
+		if err == nil {
+			for _, key := range keys {
+				seatID := key[10:] // len("lock:seat:")
+				val, _ := rdb.Get(ctx, key).Result()
+				if len(val) > 5 && val[:5] == "sold:" {
+					sold = append(sold, seatID)
+				} else {
+					locked = append(locked, seatID)
+				}
+			}
+			return locked, sold
+		}
+	}
+
+	lockMu.Lock()
+	defer lockMu.Unlock()
+
+	now := time.Now()
+	for seatID, lockInfo := range inMemLocks {
+		if now.Before(lockInfo.ExpiresAt) {
+			locked = append(locked, seatID)
+		}
+	}
+	for seatID := range soldSeats {
+		sold = append(sold, seatID)
+	}
+	
+	return locked, sold
 }

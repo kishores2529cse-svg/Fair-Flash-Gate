@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, QrCode, CreditCard, Wallet, Building2, CheckCircle2, XCircle, Timer } from 'lucide-react';
 
@@ -74,7 +74,7 @@ export default function CheckoutFlow({
 
   // Handle 5-minute countdown timer during processing step
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (step === 'processing' && timeLeft > 0) {
       timer = setInterval(() => {
         setTimeLeft((prev) => {
@@ -110,7 +110,19 @@ export default function CheckoutFlow({
     );
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
+    // Generate a random checkout_id for idempotency
+    const checkoutId = `chk_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    try {
+      const res = await fetch(`http://localhost:8080/checkout?checkout_id=${checkoutId}`);
+      if (!res.ok) {
+        console.error('Checkout failed');
+      }
+    } catch (e) {
+      console.warn('Failed to call /checkout API, proceeding anyway for demo', e);
+    }
+    
     setStep('confirmed');
     setTimeout(() => {
       onPaymentSuccess();
@@ -163,7 +175,7 @@ export default function CheckoutFlow({
 
       {/* STEP 1: FOOD & BEVERAGES (Grab a Bite!) */}
       {step === 'food' && (
-        <div className="max-w-6xl mx-auto p-4 md:p-8 flex-1">
+        <div className="w-full p-4 md:p-8 flex-1">
           <div className="flex items-center justify-between mb-6 border-b border-zinc-200 pb-4">
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-zinc-800">Grab a Bite!</h2>
@@ -185,7 +197,7 @@ export default function CheckoutFlow({
                 {foodItems.map((item) => (
                   <div
                     key={item.id}
-                    className="bg-white border border-zinc-200 rounded-2xl p-4 flex gap-4 items-center shadow-sm hover:shadow-md transition-shadow"
+                    className="bg-white border border-zinc-200 rounded-2xl p-5 flex gap-5 items-center shadow-sm hover:shadow-md transition-shadow"
                   >
                     <img
                       src={item.image}
@@ -264,7 +276,7 @@ export default function CheckoutFlow({
 
       {/* STEP 2: PAYMENT OPTIONS & ORDER SUMMARY */}
       {step === 'summary' && (
-        <div className="max-w-6xl mx-auto p-4 md:p-8 flex-1">
+        <div className="w-full p-4 md:p-8 flex-1">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Payment Methods */}
             <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row h-fit">
@@ -370,7 +382,7 @@ export default function CheckoutFlow({
 
       {/* STEP 3: PROCESSING PAYMENT WITH TIMER & QR CODE (Matching Screenshot 3) */}
       {step === 'processing' && (
-        <div className="flex-1 flex items-center justify-center p-4 bg-[#f5f6f8]">
+        <div className="flex-1 flex items-center justify-center p-4 bg-[#f5f6f8] w-full">
           <div className="bg-white border border-zinc-200 rounded-3xl p-8 max-w-md w-full shadow-xl text-center">
             <h2 className="text-lg font-bold text-zinc-800 mb-1">Processing Payment</h2>
             <p className="text-xs text-zinc-500 mb-6">
@@ -404,7 +416,7 @@ export default function CheckoutFlow({
               onClick={handleConfirmPayment}
               className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow-md transition-all cursor-pointer mb-3"
             >
-              Simulate UPI Payment Success ✓
+              Simulate UPI Payment Success  ✅
             </button>
 
             <button
@@ -482,3 +494,6 @@ export default function CheckoutFlow({
     </div>
   );
 }
+
+
+

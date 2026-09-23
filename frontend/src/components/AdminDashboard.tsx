@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Users, Ticket, ShieldAlert, Activity, Database, Server, RefreshCw } from 'lucide-react';
+﻿import { useState, useEffect } from 'react';
+import { ArrowLeft, Users, Ticket, ShieldAlert, Activity, Database } from 'lucide-react';
 
 interface AdminDashboardProps {
   onBack: () => void;

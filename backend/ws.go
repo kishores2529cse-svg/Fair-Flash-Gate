@@ -54,6 +54,19 @@ func (h *Hub) run() {
 			h.mu.Unlock()
 			log.Printf("WebSocket client disconnected (ID: %s)\n", client.id)
 
+			// Automatically release any temporary locks held by this disconnected client
+			go func(cID string) {
+				released := UnlockSeatsByUser(cID)
+				for _, seatID := range released {
+					bcast, _ := json.Marshal(WSResponse{
+						Action: "broadcast_release",
+						Seat:   seatID,
+						Status: "available",
+					})
+					h.broadcast <- bcast
+				}
+			}(client.id)
+
 		case message := <-h.broadcast:
 			h.mu.Lock()
 			for client := range h.clients {
@@ -77,10 +90,13 @@ type WSMessage struct {
 }
 
 type WSResponse struct {
-	Action  string `json:"action"`
-	Seat    string `json:"seat,omitempty"`
-	Status  string `json:"status,omitempty"`
-	Message string `json:"message,omitempty"`
+	Action      string   `json:"action"`
+	Seat        string   `json:"seat,omitempty"`
+	Status      string   `json:"status,omitempty"`
+	Message     string   `json:"message,omitempty"`
+	LockedSeats []string `json:"locked_seats,omitempty"`
+	SoldSeats   []string `json:"sold_seats,omitempty"`
+	ClientID    string   `json:"client_id,omitempty"`
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -116,6 +132,24 @@ func (c *Client) readPump() {
 		}
 
 		switch msg.Action {
+		case "sync":
+			locked, sold := GetSyncState()
+			resp, _ := json.Marshal(WSResponse{
+				Action:      "sync_response",
+				LockedSeats: locked,
+				SoldSeats:   sold,
+			})
+			c.send <- resp
+
+		case "purchase":
+			PurchaseSeat(msg.Seat, c.id)
+			bcast, _ := json.Marshal(WSResponse{
+				Action: "broadcast_sold",
+				Seat:   msg.Seat,
+				Status: "sold",
+			})
+			hub.broadcast <- bcast
+
 		case "lock":
 			// Lock seat using this client's unique ID
 			locked, err := LockSeat(msg.Seat, c.id)
@@ -139,9 +173,10 @@ func (c *Client) readPump() {
 
 				// Broadcast to all other connected clients that seat is locked
 				bcast, _ := json.Marshal(WSResponse{
-					Action: "broadcast_lock",
-					Seat:   msg.Seat,
-					Status: "locked",
+					Action:   "broadcast_lock",
+					Seat:     msg.Seat,
+					Status:   "locked",
+					ClientID: msg.UserID, // Pass back the frontend's unique user_id
 				})
 				hub.broadcast <- bcast
 			}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import { useState } from 'react';
 import LandingPage from './components/LandingPage';
 import TheatreSeatSelection from './components/TheatreSeatSelection';
 import AdminDashboard from './components/AdminDashboard';
@@ -20,6 +20,11 @@ export default function App() {
     setView('landing');
   };
 
+  const handleMovieSwitch = (movieTitle: string) => {
+    setSelectedMovie(movieTitle);
+    setView('seats');
+  };
+
   return (
     <div className="w-full min-h-screen bg-black text-white font-inter">
       {view === 'landing' && (
@@ -32,7 +37,8 @@ export default function App() {
       {view === 'seats' && (
         <TheatreSeatSelection 
           movieTitle={selectedMovie} 
-          onBack={handleBackToLanding} 
+          onBack={handleBackToLanding}
+          onMovieSwitch={handleMovieSwitch}
         />
       )}
 
